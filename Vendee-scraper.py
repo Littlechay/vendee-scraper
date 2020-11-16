@@ -4,6 +4,8 @@ import pandas as pd
 import re
 from time import gmtime, strftime
 import dateutil.parser as dparser
+from dateutil import tz
+from datetime import timezone
 
 driver = webdriver.Chrome("C:\\Users\\tweed\\Documents\\chromedriver.exe")
 skippers=[]
@@ -51,10 +53,15 @@ driver.get("https://www.vendeeglobe.org/en/ranking")
 content = driver.page_source
 soup = BeautifulSoup(content)
 
-# get time of position of report
-filetime = dparser.parse(soup.find('p', class_=('rankings__subtitle')),fuzzy=True)
-filetime = filetime.strftime("%y%m%d%H%M")
+# get time of position of report and do some stuff to make sure it is recognised as 24hour clock and UTC
+filetime = soup.find('p', class_=('rankings__subtitle'))
 # print(filetime)
+filetime  = re.sub(r"[h\(\)]+", ' ', filetime.text)
+# print(filetime)
+filetime = dparser.parse(filetime, fuzzy=True)
+# print(filetime)
+filetime = filetime.strftime("%y%m%d%H%M")
+
 
 # find the entries for each boat and interate through them extracting what we want
 for a in soup.findAll('div', attrs={'class':'rankings__item'}):
