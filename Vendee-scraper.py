@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from selenium import webdriver
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -6,6 +9,7 @@ from time import gmtime, strftime
 import dateutil.parser as dparser
 from dateutil import tz
 from datetime import timezone
+import gpxpy
 
 driver = webdriver.Chrome("C:\\Users\\tweed\\Documents\\chromedriver.exe")
 skippers=[]
@@ -47,11 +51,46 @@ BoatID = {'Yes We Cam!' : 1,
                     'NEWREST - ART & FENÊTRES' : 32,
                     'CHARAL' : 33
                     } 
+ 
+ # define functions 
+  
+def expedition_export(df):
+     # create filename
+    file = "Scheds_"+filetime+".csv"
+    #  and export to CSV
+    with open(file, 'a') as file:
+        file.write('EXPEDITION\n')
+        df.to_csv(file, header=False, index=False, encoding='ascii', line_terminator='\n')
+    
+    
+def gpx_export(df):
+    # creat and write to a GPX fromat file (requires gpxpy)
+    gpx = gpxpy.gpx.GPX()
+    # create some metadata
+    gpx.name = 'Vendee'
+    gpx.description = filetime
 
+    # invert dictionary for reverse lookup
+    inv_BoatID = {v: k for k, v in BoatID.items()}
+
+    # run through the dataframe and extract lat, lon and boat name 
+    for idx in df.index:
+        gpx_wps = gpxpy.gpx.GPXWaypoint()
+        gpx_wps.latitude =df.loc[idx, 'latitude']
+        gpx_wps.longitude = df.loc[idx, 'longitude']
+        gpx_wps.symbol = "Symbol-Spot-Black"
+        gpx_wps.name = inv_BoatID[df.loc[idx, 'id']]
+        # gpx_wps.description = "for future use"
+        gpx.waypoints.append(gpx_wps)
+
+    # create the file and write the gpx data
+    with open("Vendee_"+filetime+".gpx", 'w') as f:
+        f.write(gpx.to_xml())
+
+# open page in using chromedriver 
 driver.get("https://www.vendeeglobe.org/en/ranking")
-
 content = driver.page_source
-soup = BeautifulSoup(content)
+soup = BeautifulSoup(content, "html.parser")
 
 # get time of position of report and do some stuff to make sure it is recognised as 24hour clock and UTC
 filetime = soup.find('p', class_=('rankings__subtitle'))
@@ -91,10 +130,12 @@ for a in soup.findAll('div', attrs={'class':'rankings__item'}):
 df = pd.DataFrame({'id':skippers,'latitude':latitudes,'longitude':longitudes})
 # replace boat names with ID for EXPEDITION
 df.id = [BoatID[item] for item in df.id]
-# create filename
 
-file = "Scheds_"+filetime+".csv"
-#  and export to CSV
-with open(file, 'a') as file:
-    file.write('EXPEDITION\n')
-    df.to_csv(file, header=False, index=False, encoding='ascii', line_terminator='\n')
+# export functions :  If you don't want to use a format just comment it out.
+
+# this one produces a file that EXPEDITION can read with the latest positions appended to the a track
+expedition_export(df)
+
+# this one produces a GPX file containing the waypoints of the last reported positions
+gpx_export(df)
+
