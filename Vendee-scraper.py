@@ -104,27 +104,30 @@ filetime = filetime.strftime("%y%m%d%H%M")
 
 # find the entries for each boat and interate through them extracting what we want
 for a in soup.findAll('div', attrs={'class':'rankings__item'}):
-    name=a.find('span', attrs={'style':'max-width: 140px;'})  # boat name
-    ranking=a.find('li', attrs={'class':'rankings__number'})  # current postion in fleet
- # the location of lat and lon is not obvious, and nested, so locate by the position of respective LI
-    list = a.findAll('li')[6]
-    lat = list.findAll('span')[1]
-    lon = list.findAll('span')[2]
-# Convert lat and lon to strings and strip  special characters    
-    lat = re.sub(r"\W+|_", " ", lat.text)
-    lon = re.sub(r"[^a-zA-Z0-9]+", ' ', lon.text)
-    # covert degrees mins and seconds to decimal degrees
-    deg, minutes, seconds, direction =  re.split('[ ]', lat)
-    lat = (float(deg) + float(minutes)/60 + float(seconds)/(60*60)) * (-1 if direction in ['O', 'S'] else 1)
-    lat = round(lat, 4)
-    deg, minutes, seconds, direction =  re.split('[ ]', lon)
-    lon = (float(deg) + float(minutes)/60 + float(seconds)/(60*60)) * (-1 if direction in ['O', 'S'] else 1)
-    lon = round(lon, 4)
-# Append the boats numbers to the  list 
-    skippers.append(name.text)
-    rankings.append(ranking.get_text(strip=True))
-    latitudes.append(lat)
-    longitudes.append(lon)
+    try:
+        name=a.find('span', attrs={'style':'max-width: 140px;'})  # boat name
+        ranking=a.find('li', attrs={'class':'rankings__number'})  # current postion in fleet
+     # the location of lat and lon is not obvious, and nested, so locate by the position of respective LI
+        list = a.findAll('li')[6]
+        lat = list.findAll('span')[1]
+        lon = list.findAll('span')[2]
+    # Convert lat and lon to strings and strip  special characters    
+        lat = re.sub(r"\W+|_", " ", lat.text)
+        lon = re.sub(r"[^a-zA-Z0-9]+", ' ', lon.text)
+        # covert degrees mins and seconds to decimal degrees
+        deg, minutes, seconds, direction =  re.split('[ ]', lat)
+        lat = (float(deg) + float(minutes)/60 + float(seconds)/(60*60)) * (-1 if direction in ['O', 'S'] else 1)
+        lat = round(lat, 4)
+        deg, minutes, seconds, direction =  re.split('[ ]', lon)
+        lon = (float(deg) + float(minutes)/60 + float(seconds)/(60*60)) * (-1 if direction in ['O', 'S'] else 1)
+        lon = round(lon, 4)
+    # Append the boats numbers to the  list 
+        skippers.append(name.text)
+        rankings.append(ranking.get_text(strip=True))
+        latitudes.append(lat)
+        longitudes.append(lon)
+    except:
+        pass
 
 # create a pandas data frame
 df = pd.DataFrame({'id':skippers,'latitude':latitudes,'longitude':longitudes})
