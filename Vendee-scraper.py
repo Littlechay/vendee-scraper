@@ -116,10 +116,10 @@ for a in soup.findAll('div', attrs={'class':'rankings__item'}):
         lon = re.sub(r"[^a-zA-Z0-9]+", ' ', lon.text)
         # covert degrees mins and seconds to decimal degrees
         deg, minutes, seconds, direction =  re.split('[ ]', lat)
-        lat = (float(deg) + float(minutes)/60 + float(seconds)/(60*60)) * (-1 if direction in ['O', 'S'] else 1)
+        lat = (float(deg) + float(minutes)/60 + float(seconds)/(60*60)) * (-1 if direction in ['W' or 'O', 'S'] else 1)
         lat = round(lat, 4)
         deg, minutes, seconds, direction =  re.split('[ ]', lon)
-        lon = (float(deg) + float(minutes)/60 + float(seconds)/(60*60)) * (-1 if direction in ['O', 'S'] else 1)
+        lon = (float(deg) + float(minutes)/60 + float(seconds)/(60*60)) * (-1 if direction in ['W' or 'O', 'S'] else 1)
         lon = round(lon, 4)
     # Append the boats numbers to the  list 
         skippers.append(name.text)
