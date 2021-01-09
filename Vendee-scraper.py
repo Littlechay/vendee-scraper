@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Scrapes the Vendeeglobe.org website for the latest positions of
 the boats competing in the Vendee Globe race 2020 edition. The scraped
@@ -12,18 +14,13 @@ Functions:
     expedition_export
     gpx_export
 """
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import re
-from selenium import webdriver
+import urllib.request
 from bs4 import BeautifulSoup
 import pandas as pd
 import dateutil.parser as dparser
 import gpxpy
 
-# driver = webdriver.Chrome("chromedriver.exe")
-driver = webdriver.Chrome(executable_path=r'chromedriver.exe')
 skippers=[]
 rankings=[]
 latitudes=[]
@@ -138,9 +135,8 @@ def gpx_export(df):
     with open("Vendee_"+fileNameStamp+".gpx", 'w') as f:
         f.write(gpx.to_xml())
 
-# open page in using chromedriver
-driver.get("https://www.vendeeglobe.org/en/ranking")
-content = driver.page_source
+# open page in using urllib
+content = urllib.request.urlopen("https://www.vendeeglobe.org/en/ranking").read()
 soup = BeautifulSoup(content, "html.parser")
 # print(soup.prettify())
 # get time of position of report and do some stuff to make
