@@ -22,11 +22,13 @@ import pandas as pd
 import dateutil.parser as dparser
 import gpxpy
 
-driver = webdriver.Chrome("chromedriver.exe")
+# driver = webdriver.Chrome("chromedriver.exe")
+driver = webdriver.Chrome(executable_path=r'chromedriver.exe')
 skippers=[]
 rankings=[]
 latitudes=[]
 longitudes=[]
+reportTimes=[]
 
 BoatID = {'Yes We Cam!' : 1,
                     'HUGO BOSS' : 2,
@@ -62,77 +64,113 @@ BoatID = {'Yes We Cam!' : 1,
                     'NEWREST - ART & FENÊTRES' : 32,
                     'CHARAL' : 33
                     }
+
+BoatID_clean = {'Yes We Cam!' : 1,
+                    'HUGO BOSS' : 2,
+                    'OMIA' : 3,
+                    'GROUPE APICIL' : 4,
+                    'PRB' : 5,
+                    'BUREAU VALLEE 2' : 6,
+                    'LinkedOut' : 7,
+                    'Maitre CoQ IV' : 8,
+                    'SEAEXPLORER' : 9,
+                    'ARKEA PAPREC' : 10,
+                    'APIVIA' : 11,
+                    'INITIATIVES-COEUR' : 12,
+                    'PURE' : 13,
+                    'V and B' : 14,
+                    "CORUM" : 15,
+                    'MACSF' : 16,
+                    'LA FABRIQUE' : 17,
+                    'PRYSMIAN GROUP' : 18,
+                    'BANQUE POPULAIRE X' : 19,
+                    'DMG MORI Global One' : 20,
+                    'TIME FOR OCEANS' : 21,
+                    'LA MIE CALINE' : 22,
+                    'MEDALLIA' : 23,
+                    'ONE PLANET ONE OCEAN' : 24,
+                    'GROUPE SETIN' : 25,
+                    'STARK' : 26,
+                    'CAMPAGNE DE FRANCE' : 27,
+                    'TSE' : 28,
+                    "L'OCCITANE EN PROVENCE" : 29,
+                    'Compagnie du Lit' : 30,
+                    'MERCI' : 31,
+                    'NEWREST - ART & FENETRES' : 32,
+                    'CHARAL' : 33
+                    }
 # define functions
 
 
 def expedition_export(df):
     """ creates a scheds file that expedition can read for race tracking """
     # create filename
-    file = "Scheds_"+filetime+".csv"
+    file = "Scheds_"+fileNameStamp+".csv"
     #  and export to CSV
-    with open(file, 'a') as file:
+    with open(file, 'w') as file:
         file.write('EXPEDITION\n')
         df.to_csv(file, header=False, index=False, encoding='ascii', line_terminator='\n')
 
 
 def gpx_export(df):
-    """writes a GPX format XML file containing a list of waypoints"""
-    # creat and write to a GPX fromat file (requires gpxpy)
+    """writes a GPX format XML file containing a list of waypoints (requires gpxpy)"""
+    pin_colours = ['Black', 'Blue', 'Green', 'Magenta', 'Orange', 'Red', 'White', 'Yellow']
     gpx = gpxpy.gpx.GPX()
     # create some metadata
     gpx.name = 'Vendee'
-    gpx.description = filetime
+    gpx.description = fileNameStamp
 
     # invert dictionary for reverse lookup
-    inv_BoatID = {v: k for k, v in BoatID.items()}
+    inv_BoatID = {v: k for k, v in BoatID_clean.items()}
 
-    # run through the dataframe and extract lat, lon and boat name
+    # run through the dataframe and extract lat, lon, time, boat name and give the marker a colour
     for idx in df.index:
         gpx_wps = gpxpy.gpx.GPXWaypoint()
-        gpx_wps.latitude =df.loc[idx, 'latitude']
+        gpx_wps.latitude = df.loc[idx, 'latitude']
         gpx_wps.longitude = df.loc[idx, 'longitude']
-        gpx_wps.symbol = "Symbol-Spot-Black"
+        gpx_wps.time = df.loc[idx, 'time']
+        gpx_wps.symbol = "Symbol-Pin-{col}".format(col = pin_colours[(idx) % len(pin_colours)])
         gpx_wps.name = inv_BoatID[df.loc[idx, 'id']]
         # gpx_wps.description = "for future use"
         gpx.waypoints.append(gpx_wps)
 
     # create the file and write the gpx data
-    with open("Vendee_"+filetime+".gpx", 'w') as f:
+    with open("Vendee_"+fileNameStamp+".gpx", 'w') as f:
         f.write(gpx.to_xml())
 
 # open page in using chromedriver
 driver.get("https://www.vendeeglobe.org/en/ranking")
 content = driver.page_source
 soup = BeautifulSoup(content, "html.parser")
-
+# print(soup.prettify())
 # get time of position of report and do some stuff to make
 # sure it is recognised as 24hour clock and UTC
 filetime = soup.find('p', class_=('rankings__subtitle'))
-# print(filetime)
 filetime  = re.sub(r"[h\(\)]+", ' ', filetime.text)
-# print(filetime)
 filetime = dparser.parse(filetime, fuzzy=True)
-# print(filetime)
-filetime = filetime.strftime("%y%m%d%H%M")
-
+fileNameStamp = filetime.strftime("%y%m%d%H%M")
 
 # find the entries for each boat and interate through them extracting what we want
-for a in soup.findAll('div', attrs={'class':'rankings__item'}):
+# for a in soup.findAll('div', attrs={'class':'rankings__item'}):
+for a in soup.findAll("tr", class_="ranking-row rankings__item"):
+
     try:
         # boat name
-        name=a.find('span', attrs={'style':'max-width: 140px;'})
+        name=a.find("td", class_="row-skipper")
+        name = name.find('div')
         # current postion in fleet
-        ranking=a.find('li', attrs={'class':'rankings__number'})
-        # the location of lat and lon is not obvious, and nested,
-        # so locate by the position of respective LI
-        lists = a.findAll('li')[6]
-        lat = lists.findAll('span')[1]
-        lon = lists.findAll('span')[2]
+        ranking=a.find("td", class_="row-number m--firstline")
+
+        latlon = a.find("td", class_="row-layout row-gps")
+        lon = latlon.find('span')
+        lon.extract()
+        lat = latlon
+
         # Convert lat and lon to strings and strip  special characters
         lat = re.sub(r"\W+|_", " ", lat.text)
         lon = re.sub(r"[^a-zA-Z0-9]+", ' ', lon.text)
         # covert degrees mins and seconds to decimal degrees
-        deg, minutes, seconds, direction =  re.split('[ ]', lat)
+        deg, minutes, seconds, direction = str.split(lat)
         lat = (float(deg) + float(minutes)/60 + float(seconds)/(60*60)) * \
                 (-1 if direction in ['W' or 'O', 'S'] else 1)
         lat = round(lat, 4)
@@ -145,14 +183,14 @@ for a in soup.findAll('div', attrs={'class':'rankings__item'}):
         rankings.append(ranking.get_text(strip=True))
         latitudes.append(lat)
         longitudes.append(lon)
-    except ValueError:
+        reportTimes.append(filetime)
+    except:
         pass
 
 # create a pandas data frame
-df = pd.DataFrame({'id':skippers,'latitude':latitudes,'longitude':longitudes})
+df = pd.DataFrame({'id':skippers,'latitude':latitudes,'longitude':longitudes,'time':reportTimes})
 # replace boat names with ID for EXPEDITION
 df.id = [BoatID[item] for item in df.id]
-
 # export functions :  If you don't want to use a format just comment it out.
 
 expedition_export(df)
